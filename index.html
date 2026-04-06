@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>香港產業新聞追蹤</title>
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #e74c3c;
+            --bg-color: #f4f7f6;
+        }
+
+        body {
+            font-family: "Segoe UI", "Microsoft JhengHei", sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--primary-color);
+        }
+
+        /* 導覽列/分類選擇 */
+        .tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 25px;
+            position: sticky;
+            top: 10px;
+            z-index: 100;
+        }
+
+        .tab-btn {
+            padding: 10px 20px;
+            border: none;
+            background: white;
+            border-radius: 25px;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            transition: 0.3s;
+            font-weight: bold;
+        }
+
+        .tab-btn:hover {
+            background: var(--accent-color);
+            color: white;
+        }
+
+        .tab-btn.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        /* 新聞列表 */
+        #news-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .news-item {
+            background: white;
+            margin-bottom: 15px;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        .news-item:hover {
+            transform: translateY(-3px);
+        }
+
+        .news-item a {
+            text-decoration: none;
+            color: #333;
+            font-size: 1.1rem;
+            font-weight: 500;
+            display: block;
+            line-height: 1.4;
+        }
+
+        .news-item .meta {
+            font-size: 0.85rem;
+            color: #888;
+            margin-top: 8px;
+        }
+
+        /* 載入中動畫 */
+        .loader {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #666;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>香港產業動態追蹤</h1>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="fetchNews('香港 旅遊業', this)">旅遊業</button>
+        <button class="tab-btn" onclick="fetchNews('香港 酒店業', this)">酒店業</button>
+        <button class="tab-btn" onclick="fetchNews('香港 餐飲業 零售', this)">餐飲業</button>
+        <button class="tab-btn" onclick="fetchNews('香港 主題公園 迪士尼 海洋公園', this)">主題公園</button>
+    </div>
+
+    <div id="news-list-container">
+        <div id="loader" class="loader" style="display:none;">正在獲取最新資訊...</div>
+        <ul id="news-list"></ul>
+    </div>
+</div>
+
+<script>
+    // 使用 Google News RSS 配合 rss2json 轉換器
+    async function fetchNews(keyword, element) {
+        const listElement = document.getElementById('news-list');
+        const loader = document.getElementById('loader');
+        
+        // 切換按鈕狀態
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        element.classList.add('active');
+
+        // 清空列表並顯示 Loading
+        listElement.innerHTML = '';
+        loader.style.display = 'block';
+
+        const rssUrl = `https://news.google.com/rss/search?q=${encodeURIComponent(keyword)}+when:7d&hl=zh-HK&gl=HK&ceid=HK:zh-Hant`;
+        const apiUrl = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`;
+
+        try {
+            const response = await fetch(apiUrl);
+            const data = await response.json();
+
+            loader.style.display = 'none';
+
+            if (data.status === 'ok') {
+                data.items.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'news-item';
+                    
+                    // 格式化日期
+                    const pubDate = new Date(item.pubDate).toLocaleDateString('zh-HK');
+                    
+                    li.innerHTML = `
+                        <a href="${item.link}" target="_blank">${item.title}</a>
+                        <div class="meta">來源：${item.author || '新聞來源'} | 發佈日期：${pubDate}</div>
+                    `;
+                    listElement.appendChild(li);
+                });
+
+                if (data.items.length === 0) {
+                    listElement.innerHTML = '<p style="text-align:center;">暫時沒有相關新聞。</p>';
+                }
+            } else {
+                throw new Error('無法獲取資料');
+            }
+        } catch (error) {
+            loader.style.display = 'none';
+            listElement.innerHTML = `<p style="text-align:center; color:red;">加載出錯，請稍後再試。 Error: ${error.message}</p>`;
+        }
+    }
+
+    // 初始化：預設載入旅遊業新聞
+    window.onload = () => {
+        const firstBtn = document.querySelector('.tab-btn');
+        fetchNews('香港 旅遊業', firstBtn);
+    };
+</script>
+
+</body>
+</html>
